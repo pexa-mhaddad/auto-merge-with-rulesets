@@ -9,6 +9,6 @@
     "lodash": "4.17.20",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-router-dom": "6.19.0"
+    "react-router-dom": "7.6.0"
   }
 }
