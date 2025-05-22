@@ -1,0 +1,100 @@
+name: Conditional Dependabot Auto-merge
+
+# Potential race condition : If a PR is labeled after it's opened, there might be a race condition where the workflow runs before the label is properly applied.
+on:
+    pull_request:
+        types:
+            - "opened"
+            - "synchronize"
+            - "reopened"
+            - "labeled"
+        branches:
+            - "main"
+        paths:
+            - "kotlin/**"
+            - "npm/**"
+            - "terraform/**"
+
+permissions:
+    pull-requests: write
+    contents: write
+
+jobs:
+    auto_merge_npm:
+        if: |
+            github.actor == 'dependabot[bot]' && 
+            contains(github.event.pull_request.labels.*.name, 'javascript')
+        uses: ./.github/workflows/npm.yml
+
+    auto_merge_kotlin:
+        if: |
+            github.actor == 'dependabot[bot]' && 
+            contains(github.event.pull_request.labels.*.name, 'java')
+        uses: ./.github/workflows/kotlin.yml
+
+    auto_merge_terraform:
+        if: |
+            github.actor == 'dependabot[bot]' && 
+            contains(github.event.pull_request.labels.*.name, 'terraform')
+        uses: ./.github/workflows/terraform.yml
+    
+    check_auto_merge:
+        needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check for auto-merge
+              run: |
+                  labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
+                  npm_result="${{ needs.auto_merge_npm.result }}"
+                  kotlin_result="${{ needs.auto_merge_kotlin.result }}"
+                  terraform_result="${{ needs.auto_merge_terraform.result }}"
+
+                  echo "Actor: ${{ github.actor }}"
+                  echo "Event Name: ${{ github.event_name }}"
+                  
+                  if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
+                      if echo "$labels" | jq -r 'any(.[]; . == "javascript" or . == "java" or . == "terraform")' | grep -q true; then
+                          if [[ "$npm_result" == "success" || "$npm_result" == "skipped" ]] && 
+                             [[ "$kotlin_result" == "success" || "$kotlin_result" == "skipped" ]] && 
+                             [[ "$terraform_result" == "success" || "$terraform_result" == "skipped" ]]; then
+                              echo "Auto-merge is enabled."
+                          else
+                              echo "Auto-merge is not enabled: Job results not successful or skipped."
+                          fi
+                      else
+                          echo "Auto-merge is not enabled: Required labels not found."
+                      fi
+                  else
+                      echo "Auto-merge is not enabled: Not a dependabot PR."
+                  fi
+
+    enable_automerge:
+        needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
+        if: |
+            always() &&
+            github.actor == 'dependabot[bot]' && 
+            (contains(github.event.pull_request.labels.*.name, 'javascript') ||
+            contains(github.event.pull_request.labels.*.name, 'java') ||
+            contains(github.event.pull_request.labels.*.name, 'terraform')) &&
+            (needs.auto_merge_npm.result == 'success' || needs.auto_merge_npm.result == 'skipped') &&
+            (needs.auto_merge_kotlin.result == 'success' || needs.auto_merge_kotlin.result == 'skipped') &&
+            (needs.auto_merge_terraform.result == 'success' || needs.auto_merge_terraform.result == 'skipped')
+        runs-on: ubuntu-latest
+        steps:
+            - name: Enable auto-merge
+              run: |
+                  echo "Auto-merge enabled for the PR."
+            - name: Merge PR
+              uses: actions/github-script@v6
+              with:
+                github-token: ${{ secrets.GITHUB_TOKEN }}
+                script: |
+                  console.log('Merging PR...');
+                  await github.rest.pulls.merge({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: context.payload.pull_request.number,
+                    merge_method: 'merge'
+                  });
+                  console.log('PR merged.');

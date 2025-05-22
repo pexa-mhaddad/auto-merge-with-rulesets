@@ -1,0 +1,18 @@
+name: Kotlin Check
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  auto_merge_kotlin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Validate with Maven
+        run: cd kotlin && mvn -B compile
