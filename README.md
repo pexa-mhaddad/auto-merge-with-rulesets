@@ -26,7 +26,7 @@ This repository demonstrates how to use GitHub rulesets with Dependabot auto-mer
 
 The repository uses three rulesets located in `.github/rulesets/`:
 - `terraform.json` - Enforces `auto_merge_terraform` status check
-- `npm.json` - Enforces `auto_merge_npm / npm-validate` status check
+- `npm.json` - Enforces `auto_merge_npm` status check
 - `kotlin.json` - Enforces `auto_merge_kotlin` status check
 
 Each ruleset is configured to apply to the default branch and includes protection against branch deletion and non-fast-forward updates.

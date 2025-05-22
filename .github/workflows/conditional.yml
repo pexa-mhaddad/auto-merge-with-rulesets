@@ -38,48 +38,59 @@ jobs:
             contains(github.event.pull_request.labels.*.name, 'terraform')
         uses: ./.github/workflows/terraform.yml
     
-    check_auto_merge:
+    workflow_status:
+        name: dependabot-auto-merge
         needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
         if: always()
         runs-on: ubuntu-latest
         steps:
-            - name: Check for auto-merge
+            - name: Check Workflow Status
               run: |
-                  labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
-                  npm_result="${{ needs.auto_merge_npm.result }}"
-                  kotlin_result="${{ needs.auto_merge_kotlin.result }}"
-                  terraform_result="${{ needs.auto_merge_terraform.result }}"
-
-                  echo "Actor: ${{ github.actor }}"
-                  echo "Event Name: ${{ github.event_name }}"
-                  
-                  if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
-                      if echo "$labels" | jq -r 'any(.[]; . == "javascript" or . == "java" or . == "terraform")' | grep -q true; then
-                          if [[ "$npm_result" == "success" || "$npm_result" == "skipped" ]] && 
-                             [[ "$kotlin_result" == "success" || "$kotlin_result" == "skipped" ]] && 
-                             [[ "$terraform_result" == "success" || "$terraform_result" == "skipped" ]]; then
-                              echo "Auto-merge is enabled."
-                          else
-                              echo "Auto-merge is not enabled: Job results not successful or skipped."
-                          fi
-                      else
-                          echo "Auto-merge is not enabled: Required labels not found."
-                      fi
-                  else
-                      echo "Auto-merge is not enabled: Not a dependabot PR."
+                labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
+                
+                # Only check status for dependabot PRs with relevant labels
+                if [[ "${{ github.actor }}" != "dependabot[bot]" ]]; then
+                  echo "Not a dependabot PR, skipping checks"
+                  exit 0
+                fi
+                
+                if ! echo "$labels" | jq -r 'any(.[]; . == "javascript" or . == "java" or . == "terraform")' | grep -q true; then
+                  echo "No relevant labels found, skipping checks"
+                  exit 0
+                fi
+                
+                # Check job results
+                exit_on_result() {
+                  if [[ "$2" == "failure" || "$2" == "cancelled" ]]; then
+                    echo "Job '$1' failed or was cancelled."
+                    exit 1
                   fi
+                }
+                
+                # Only check jobs that should have run based on labels
+                if echo "$labels" | jq -r 'any(.[]; . == "javascript")' | grep -q true; then
+                  exit_on_result "auto_merge_npm" "${{ needs.auto_merge_npm.result }}"
+                fi
+                
+                if echo "$labels" | jq -r 'any(.[]; . == "java")' | grep -q true; then
+                  exit_on_result "auto_merge_kotlin" "${{ needs.auto_merge_kotlin.result }}"
+                fi
+                
+                if echo "$labels" | jq -r 'any(.[]; . == "terraform")' | grep -q true; then
+                  exit_on_result "auto_merge_terraform" "${{ needs.auto_merge_terraform.result }}"
+                fi
+                
+                echo "All required checks passed successfully"
 
     enable_automerge:
-        needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
+        needs: [workflow_status]
         if: |
             always() &&
             github.actor == 'dependabot[bot]' && 
             (contains(github.event.pull_request.labels.*.name, 'javascript') ||
             contains(github.event.pull_request.labels.*.name, 'java') ||
             contains(github.event.pull_request.labels.*.name, 'terraform')) &&
-            (needs.auto_merge_npm.result == 'success' || needs.auto_merge_npm.result == 'skipped') &&
-            (needs.auto_merge_kotlin.result == 'success' || needs.auto_merge_kotlin.result == 'skipped') &&
-            (needs.auto_merge_terraform.result == 'success' || needs.auto_merge_terraform.result == 'skipped')
+            needs.workflow_status.result == 'success'
         runs-on: ubuntu-latest
         steps:
             - name: Enable auto-merge
