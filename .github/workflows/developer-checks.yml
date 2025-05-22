@@ -1,0 +1,51 @@
+name: Developer PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  npm_checks:
+    name: npm-checks
+    if: github.actor != 'dependabot[bot]' && contains(github.event.pull_request.files.*.filename, 'npm/')
+    uses: ./.github/workflows/npm.yml
+
+  kotlin_checks:
+    name: kotlin-checks
+    if: github.actor != 'dependabot[bot]' && contains(github.event.pull_request.files.*.filename, 'kotlin/')
+    uses: ./.github/workflows/kotlin.yml
+
+  terraform_checks:
+    name: terraform-checks
+    if: github.actor != 'dependabot[bot]' && contains(github.event.pull_request.files.*.filename, 'terraform/')
+    uses: ./.github/workflows/terraform.yml
+    
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    needs: [npm_checks, kotlin_checks, terraform_checks]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: echo "Running build checks"
+        
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: echo "Running tests"
+        
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Lint
+        run: echo "Running linters"
