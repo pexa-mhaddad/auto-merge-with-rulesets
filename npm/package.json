@@ -5,7 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "clean-stack": "5.1.0",
-    "express": "4.0.0",
+    "express": "5.1.0",
     "lodash": "4.17.20",
     "react": "19.0.0",
     "react-dom": "19.0.0",
