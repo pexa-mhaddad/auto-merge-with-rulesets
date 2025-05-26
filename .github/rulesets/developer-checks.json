@@ -1,9 +1,10 @@
 {
+  "id": 5613290,
   "name": "developer-checks",
   "target": "branch",
   "source_type": "Repository",
   "source": "pexa-mhaddad/auto-merge-with-rulesets",
-  "enforcement": "active",
+  "enforcement": "disabled",
   "conditions": {
     "ref_name": {
       "exclude": [],
@@ -39,27 +40,12 @@
           }
         ]
       }
-    },
-    {
-      "type": "required_reviews",
-      "parameters": {
-        "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true
-      }
     }
   ],
   "bypass_actors": [
     {
-      "actor_id": 49699333,
+      "actor_id": 29110,
       "actor_type": "Integration",
-      "bypass_mode": "always"
-    },
-    {
-      "actor_id": 5,
-      "actor_type": "RepositoryRole",
       "bypass_mode": "always"
     }
   ]
