@@ -40,7 +40,10 @@ Dependabot is configured in `.github/dependabot.yml` to:
 The auto-merge process works as follows:
 1. Dependabot creates a PR with appropriate labels (javascript, java, or terraform)
 2. The conditional workflow in `.github/workflows/conditional.yml` triggers based on these labels
-3. Specific validation jobs run for the affected ecosystem
+3. Specific validation jobs run for the affected ecosystem using reusable workflows:
+   - `.github/workflows/npm.yml` for npm dependencies
+   - `.github/workflows/kotlin.yml` for Kotlin dependencies
+   - `.github/workflows/terraform.yml` for Terraform dependencies
 4. The `workflow_status` job runs as a status check named `dependabot-auto-merge`
 5. If validation passes, the `enable_automerge` job automatically merges the PR
 
@@ -50,6 +53,14 @@ For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-chec
 1. Runs specific checks based on which directories have changes
 2. Executes build, test, and lint jobs that are required by the `developer-checks` ruleset
 3. Requires code review approval before merging
+
+## Implementation Notes
+
+- Each ecosystem-specific workflow (npm.yml, kotlin.yml, terraform.yml) contains an `if` condition to exclude Dependabot PRs when run directly, but they are called by the conditional workflow for Dependabot PRs
+- The workflows can be triggered by:
+  - Pull requests that modify files in their respective directories
+  - Manual workflow dispatch
+  - Being called by other workflows (workflow_call)
 
 ## Testing Instructions
 
