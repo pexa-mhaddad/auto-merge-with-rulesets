@@ -68,3 +68,4 @@ For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-chec
    - PRs that pass their respective checks are handled according to their ruleset
 
 https://github.com/orgs/community/discussions/12395
+https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enabling-automerge-on-a-pull-request

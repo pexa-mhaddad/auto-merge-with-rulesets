@@ -2,12 +2,8 @@ name: Kotlin Check
 
 on:
   pull_request:
-    # Trigger on changes to the main branch, excluding dependabot updates
-    # to avoid unnecessary workflow runs for automated dependency updates.
     branches:
       - main
-      # Exclude branches created by Dependabot to prevent triggering the workflow
-      - '!dependabot/**'
     paths:
       - kotlin/**
   workflow_dispatch:
