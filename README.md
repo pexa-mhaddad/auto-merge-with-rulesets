@@ -22,10 +22,10 @@ This repository demonstrates how to use GitHub rulesets with Dependabot auto-mer
 ## Ruleset Configuration
 
 The repository uses two rulesets located in `.github/rulesets/`:
-- `dependabot-auto-merge.json` - Enforces `dependabot-auto-merge` status check for Dependabot PRs
-- `developer-checks.json` - Enforces build, test, and lint status checks along with required reviews for developer PRs
+- `dependabot-auto-merge.json` - Enforces `dependabot-auto-merge` status check for Dependabot PRs (currently active)
+- `developer-checks.json` - Enforces build, test, and lint status checks for developer PRs (currently disabled)
 
-Each ruleset is configured to apply to the default branch and includes protection against branch deletion and non-fast-forward updates.
+Each ruleset is configured to apply to the default branch and includes protection against branch deletion and non-fast-forward updates. The dependabot-auto-merge ruleset is currently active, while the developer-checks ruleset is currently disabled.
 
 ## Dependabot Configuration
 
@@ -52,7 +52,7 @@ The auto-merge process works as follows:
 For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-checks.yml`:
 1. Runs specific checks based on which directories have changes
 2. Executes build, test, and lint jobs that are required by the `developer-checks` ruleset
-3. Requires code review approval before merging
+3. Note that while the ruleset is currently disabled, the workflow will still run the checks
 
 ## Implementation Notes
 
@@ -61,6 +61,9 @@ For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-chec
   - Pull requests that modify files in their respective directories
   - Manual workflow dispatch
   - Being called by other workflows (workflow_call)
+- The npm workflow validates the package by installing dependencies and running the index.js file
+- The Kotlin workflow validates the project by compiling it with Maven
+- The Terraform workflow validates the configuration by running terraform init and terraform validate
 
 ## Testing Instructions
 
@@ -69,14 +72,14 @@ For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-chec
 3. Enable Dependabot security updates and version updates
 4. Navigate to "Settings" > "Code and automation" > "Rulesets"
 5. Create two new rulesets using the JSON files in `.github/rulesets/`:
-   - Create a ruleset for Dependabot PRs using `dependabot-auto-merge.json`
-   - Create a ruleset for developer PRs using `developer-checks.json`
+   - Create a ruleset for Dependabot PRs using `dependabot-auto-merge.json` (set to active)
+   - Create a ruleset for developer PRs using `developer-checks.json` (can be enabled as needed)
 6. Configure the rulesets to apply to their respective PR types
 7. Wait for Dependabot to create PRs or trigger them manually
 8. Observe that:
    - Dependabot PRs only need to pass their ecosystem-specific checks
-   - Developer PRs need to pass all checks and get code review approval
-   - PRs that pass their respective checks are handled according to their ruleset
+   - Developer PRs will run all checks defined in the workflow
+   - Dependabot PRs that pass their checks will be automatically merged
 
 https://github.com/orgs/community/discussions/12395
 https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enabling-automerge-on-a-pull-request
