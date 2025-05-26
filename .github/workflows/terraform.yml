@@ -11,6 +11,8 @@ on:
 
 jobs:
   terraform-validate:
+    # exclude dependabot
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
