@@ -1,11 +1,18 @@
 name: Kotlin Check
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - kotlin/**
   workflow_dispatch:
   workflow_call:
 
 jobs:
   kotlin-validate:
+    # exclude dependabot
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

@@ -1,11 +1,18 @@
 name: Terraform Check
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
   workflow_dispatch:
   workflow_call:
 
 jobs:
   terraform-validate:
+    # exclude dependabot
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
