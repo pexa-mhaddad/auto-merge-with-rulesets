@@ -11,8 +11,8 @@ on:
 
 jobs:
   npm-validate:
-    # exclude dependabot
-    if: github.actor != 'dependabot[bot]'
+    # exclude dependabot on pull requests
+    if: ${{ !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
