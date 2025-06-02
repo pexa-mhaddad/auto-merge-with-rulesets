@@ -1,13 +1,8 @@
 name: Conditional Dependabot Auto-merge
-
-# Potential race condition : If a PR is labeled after it's opened, there might be a race condition where the workflow runs before the label is properly applied.
+# This PR is for dependabot only.
+# Potential race condition : If a PR is labelled after it's opened, there might be a race condition where the workflow runs before the label is properly applied.
 on:
     pull_request:
-        types:
-            - "opened"
-            - "synchronize"
-            - "reopened"
-            - "labeled"
         branches:
             - "main"
         paths:
