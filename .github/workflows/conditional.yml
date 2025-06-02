@@ -20,18 +20,24 @@ jobs:
             github.actor == 'dependabot[bot]' && 
             contains(github.event.pull_request.labels.*.name, 'javascript')
         uses: ./.github/workflows/npm.yml
+        with:
+          is_dependabot_call: true
 
     auto_merge_kotlin:
         if: |
             github.actor == 'dependabot[bot]' && 
             contains(github.event.pull_request.labels.*.name, 'java')
         uses: ./.github/workflows/kotlin.yml
+        with:
+          is_dependabot_call: true
 
     auto_merge_terraform:
         if: |
             github.actor == 'dependabot[bot]' && 
             contains(github.event.pull_request.labels.*.name, 'terraform')
         uses: ./.github/workflows/terraform.yml
+        with:
+          is_dependabot_call: true
     
     workflow_status:
         name: dependabot-auto-merge
