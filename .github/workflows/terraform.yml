@@ -1,11 +1,23 @@
 name: Terraform Check
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - terraform/**
   workflow_dispatch:
   workflow_call:
-
+    inputs:
+      is_dependabot_call:
+        description: 'True if called by a Dependabot-specific workflow'
+        required: false
+        type: boolean
+        default: false
 jobs:
   terraform-validate:
+    # Run if called by dependabot workflow OR if it's a non-dependabot PR
+    if: ${{ inputs.is_dependabot_call || !(github.event_name == 'pull_request' && github.actor == 'dependabot[bot]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
