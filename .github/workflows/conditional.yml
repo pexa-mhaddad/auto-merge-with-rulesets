@@ -2,111 +2,126 @@ name: Conditional Dependabot Auto-merge
 # This PR is for dependabot only.
 # Potential race condition : If a PR is labelled after it's opened, there might be a race condition where the workflow runs before the label is properly applied.
 on:
-    pull_request:
-        branches:
-            - "main"
-        paths:
-            - "kotlin/**"
-            - "npm/**"
-            - "terraform/**"
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - "kotlin/**"
+      - "npm/**"
+      - "terraform/**"
 
 permissions:
-    pull-requests: write
-    contents: write
+  pull-requests: write
+  contents: write
 
 jobs:
-    auto_merge_npm:
-        if: |
-            github.actor == 'dependabot[bot]' && 
-            contains(github.event.pull_request.labels.*.name, 'javascript')
-        uses: ./.github/workflows/npm.yml
-        with:
-          is_dependabot_call: true
+  auto_merge_npm:
+    if: |
+      github.actor == 'dependabot[bot]' && 
+      contains(github.event.pull_request.labels.*.name, 'javascript')
+    uses: ./.github/workflows/npm.yml
+    with:
+      is_dependabot_call: true
 
-    auto_merge_kotlin:
-        if: |
-            github.actor == 'dependabot[bot]' && 
-            contains(github.event.pull_request.labels.*.name, 'java')
-        uses: ./.github/workflows/kotlin.yml
-        with:
-          is_dependabot_call: true
+  auto_merge_kotlin:
+    if: |
+      github.actor == 'dependabot[bot]' && 
+      contains(github.event.pull_request.labels.*.name, 'java')
+    uses: ./.github/workflows/kotlin.yml
+    with:
+      is_dependabot_call: true
 
-    auto_merge_terraform:
-        if: |
-            github.actor == 'dependabot[bot]' && 
-            contains(github.event.pull_request.labels.*.name, 'terraform')
-        uses: ./.github/workflows/terraform.yml
-        with:
-          is_dependabot_call: true
-    
-    workflow_status:
-        name: dependabot-auto-merge
-        needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: Check Workflow Status
-              run: |
-                labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
-                
-                # Only check status for dependabot PRs with relevant labels
-                if [[ "${{ github.actor }}" != "dependabot[bot]" ]]; then
-                  echo "Not a dependabot PR, skipping checks"
-                  exit 0
-                fi
-                
-                if ! echo "$labels" | jq -r 'any(.[]; . == "javascript" or . == "java" or . == "terraform")' | grep -q true; then
-                  echo "No relevant labels found, skipping checks"
-                  exit 0
-                fi
-                
-                # Check job results
-                exit_on_result() {
-                  if [[ "$2" == "failure" || "$2" == "cancelled" ]]; then
-                    echo "Job '$1' failed or was cancelled."
-                    exit 1
-                  fi
-                }
-                
-                # Only check jobs that should have run based on labels
-                if echo "$labels" | jq -r 'any(.[]; . == "javascript")' | grep -q true; then
-                  exit_on_result "auto_merge_npm" "${{ needs.auto_merge_npm.result }}"
-                fi
-                
-                if echo "$labels" | jq -r 'any(.[]; . == "java")' | grep -q true; then
-                  exit_on_result "auto_merge_kotlin" "${{ needs.auto_merge_kotlin.result }}"
-                fi
-                
-                if echo "$labels" | jq -r 'any(.[]; . == "terraform")' | grep -q true; then
-                  exit_on_result "auto_merge_terraform" "${{ needs.auto_merge_terraform.result }}"
-                fi
-                
-                echo "All required checks passed successfully"
+  auto_merge_terraform:
+    if: |
+      github.actor == 'dependabot[bot]' && 
+      contains(github.event.pull_request.labels.*.name, 'terraform')
+    uses: ./.github/workflows/terraform.yml
+    with:
+      is_dependabot_call: true
 
-    enable_automerge:
-        needs: [workflow_status]
-        if: |
-            always() &&
-            github.actor == 'dependabot[bot]' && 
-            (contains(github.event.pull_request.labels.*.name, 'javascript') ||
-            contains(github.event.pull_request.labels.*.name, 'java') ||
-            contains(github.event.pull_request.labels.*.name, 'terraform')) &&
-            needs.workflow_status.result == 'success'
-        runs-on: ubuntu-latest
-        steps:
-            - name: Enable auto-merge
-              run: |
-                  echo "Auto-merge enabled for the PR."
-            - name: Merge PR
-              uses: actions/github-script@v6
-              with:
-                github-token: ${{ secrets.GITHUB_TOKEN }}
-                script: |
-                  console.log('Merging PR...');
-                  await github.rest.pulls.merge({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: context.payload.pull_request.number,
-                    merge_method: 'merge'
-                  });
-                  console.log('PR merged.');
+  workflow_status:
+    name: dependabot-auto-merge
+    needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Workflow Status
+        run: |
+          labels='${{ toJson(github.event.pull_request.labels.*.name) }}'
+
+          # Only check status for dependabot PRs with relevant labels
+          if [[ "${{ github.actor }}" != "dependabot[bot]" ]]; then
+            echo "Not a dependabot PR, skipping checks"
+            exit 0
+          fi
+
+          if ! echo "$labels" | jq -r 'any(.[]; . == "javascript" or . == "java" or . == "terraform")' | grep -q true; then
+            echo "No relevant labels found, skipping checks"
+            exit 0
+          fi
+
+          # Track if at least one job succeeded
+          any_success=false
+
+          # Check job results
+          check_job_result() {
+            if [[ "$2" == "success" ]]; then
+                echo "Job '$1' succeeded."
+                any_success=true
+            elif [[ "$2" == "failure" || "$2" == "cancelled" ]]; then
+                echo "Job '$1' failed or was cancelled."
+                exit 1
+            else
+                echo "Job '$1' was skipped or had another status: $2"
+            fi
+          }
+
+          # Only check jobs that should have run based on labels
+          if echo "$labels" | jq -r 'any(.[]; . == "javascript")' | grep -q true; then
+            check_job_result "auto_merge_npm" "${{ needs.auto_merge_npm.result }}"
+          fi
+
+          if echo "$labels" | jq -r 'any(.[]; . == "java")' | grep -q true; then
+            check_job_result "auto_merge_kotlin" "${{ needs.auto_merge_kotlin.result }}"
+          fi
+
+          if echo "$labels" | jq -r 'any(.[]; . == "terraform")' | grep -q true; then
+            check_job_result "auto_merge_terraform" "${{ needs.auto_merge_terraform.result }}"
+          fi
+
+          # Only succeed if at least one job succeeded
+          if [[ "$any_success" == "true" ]]; then
+            echo "At least one required check passed successfully"
+            exit 0
+          else
+            echo "All required checks were skipped or had another status"
+            exit 1
+          fi
+
+  enable_automerge:
+    needs: [workflow_status]
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' && 
+      (contains(github.event.pull_request.labels.*.name, 'javascript') ||
+      contains(github.event.pull_request.labels.*.name, 'java') ||
+      contains(github.event.pull_request.labels.*.name, 'terraform')) &&
+      needs.workflow_status.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        run: |
+          echo "Auto-merge enabled for the PR."
+      - name: Merge PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('Merging PR...');
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              merge_method: 'merge'
+            });
+            console.log('PR merged.');
