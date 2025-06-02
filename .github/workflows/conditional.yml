@@ -42,7 +42,9 @@ jobs:
   workflow_status:
     name: dependabot-auto-merge
     needs: [auto_merge_npm, auto_merge_kotlin, auto_merge_terraform]
-    if: github.actor == 'dependabot[bot]'
+    if: |
+      always() &&
+      github.actor == 'dependabot[bot]' 
     runs-on: ubuntu-latest
     steps:
       - name: Check Workflow Status
