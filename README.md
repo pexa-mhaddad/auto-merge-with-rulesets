@@ -1,6 +1,6 @@
-# GitHub Rulesets with Dependabot Auto-Merge Test
+# Auto-Merge with Rulesets for Dependabot PRs
 
-This repository demonstrates how to use GitHub rulesets with Dependabot auto-merge in a monorepo structure.
+This repository demonstrates how to implement auto-merge functionality for Dependabot PRs using GitHub rulesets in a multi-ecosystem project structure. It serves as a proof of concept for the evergreen initiative to streamline dependency updates.
 
 ## Repository Structure
 
@@ -11,21 +11,38 @@ This repository demonstrates how to use GitHub rulesets with Dependabot auto-mer
 
 ## How It Works
 
-1. Dependabot is configured to monitor Terraform, npm, and Maven dependencies
-2. A conditional workflow triggers specific validation jobs based on PR labels:
+1. **Dependabot Configuration**: Monitors Terraform, npm, and Maven dependencies
+2. **Conditional Workflow**: Triggers specific validation jobs based on PR labels:
    - `auto_merge_terraform` job for Terraform changes (with 'terraform' label)
    - `auto_merge_npm` job for npm changes (with 'javascript' label)
    - `auto_merge_kotlin` job for Kotlin changes (with 'java' label)
-3. GitHub rulesets enforce specific status checks
-4. Dependabot auto-merge is configured to merge PRs that pass the required checks
+3. **Single Status Check**: A `workflow_status` job serves as the single required status check
+4. **Auto-Merge Process**: Dependabot PRs that pass validation are automatically merged
 
-## Ruleset Configuration
+## Implementation Details
 
-The repository uses two rulesets located in `.github/rulesets/`:
-- `dependabot-auto-merge.json` - Enforces `dependabot-auto-merge` status check for Dependabot PRs (currently active)
-- `developer-checks.json` - Enforces build, test, and lint status checks for developer PRs (currently disabled)
+### 1. Single Workflow Status Check
+- A single dependabot workflow triggers existing reusable workflows based on PR labels
+- The `workflow_status` job serves as the single required status check named `dependabot-auto-merge`
+- This approach follows the solution described in [GitHub Community Discussion](https://github.com/orgs/community/discussions/12395#discussioncomment-12970019)
 
-Each ruleset is configured to apply to the default branch and includes protection against branch deletion and non-fast-forward updates. The dependabot-auto-merge ruleset is currently active, while the developer-checks ruleset is currently disabled.
+### 2. Ruleset Configuration
+- Repository uses a ruleset located in `.github/rulesets/dependabot-auto-merge.json`
+- Enforces the `dependabot-auto-merge` status check for the main branch
+- Includes protection against branch deletion and non-fast-forward updates
+- Allows repository maintainers to bypass the required check when necessary
+
+### 3. Workflow Modifications
+- Ecosystem-specific workflows (npm.yml, kotlin.yml, terraform.yml) contain conditional logic
+- Each workflow includes `if: github.actor != 'dependabot[bot]'` to prevent duplicate runs
+- Workflows are reused through the workflow_call trigger in the conditional workflow
+
+### 4. Auto-merge Process
+1. Dependabot creates a PR with appropriate labels (javascript, java, or terraform)
+2. The conditional workflow in `.github/workflows/conditional.yml` triggers based on these labels
+3. Specific validation jobs run for the affected ecosystem using reusable workflows
+4. The `workflow_status` job runs as a status check named `dependabot-auto-merge`
+5. If validation passes, the `enable_automerge` job automatically merges the PR
 
 ## Dependabot Configuration
 
@@ -35,51 +52,29 @@ Dependabot is configured in `.github/dependabot.yml` to:
 - Monitor Maven dependencies in `/kotlin` directory
 - Check for updates weekly with a limit of 5 open PRs per ecosystem
 
-## Auto-Merge Workflow
+## Implementation for Other Repositories
 
-The auto-merge process works as follows:
-1. Dependabot creates a PR with appropriate labels (javascript, java, or terraform)
-2. The conditional workflow in `.github/workflows/conditional.yml` triggers based on these labels
-3. Specific validation jobs run for the affected ecosystem using reusable workflows:
-   - `.github/workflows/npm.yml` for npm dependencies
-   - `.github/workflows/kotlin.yml` for Kotlin dependencies
-   - `.github/workflows/terraform.yml` for Terraform dependencies
-4. The `workflow_status` job runs as a status check named `dependabot-auto-merge`
-5. If validation passes, the `enable_automerge` job automatically merges the PR
+To implement this approach in other repositories:
 
-## Developer Workflow
+1. **Analyze Repository Structure**:
+   - Identify package ecosystems used in the repository
+   - Determine which existing workflows can be reused
 
-For non-Dependabot PRs, a separate workflow in `.github/workflows/developer-checks.yml`:
-1. Runs specific checks based on which directories have changes
-2. Executes build, test, and lint jobs that are required by the `developer-checks` ruleset
-3. Note that while the ruleset is currently disabled, the workflow will still run the checks
+2. **Workflow Adaptation**:
+   - Create a conditional workflow similar to this POC
+   - Modify existing workflows to include the necessary conditional logic
+   - Implement the workflow_status job as the required status check
 
-## Implementation Notes
+3. **Ruleset/Branch Protection Setup**:
+   - Configure appropriate branch protection or ruleset
+   - Set up the single required status check
+   - Configure team bypass permissions
 
-- Each ecosystem-specific workflow (npm.yml, kotlin.yml, terraform.yml) contains an `if` condition to exclude Dependabot PRs when run directly, but they are called by the conditional workflow for Dependabot PRs
-- The workflows can be triggered by:
-  - Pull requests that modify files in their respective directories
-  - Manual workflow dispatch
-  - Being called by other workflows (workflow_call)
-- The npm workflow validates the package by installing dependencies and running the index.js file
-- The Kotlin workflow validates the project by compiling it with Maven
-- The Terraform workflow validates the configuration by running terraform init and terraform validate
+4. **Dependabot Configuration**:
+   - Ensure Dependabot is configured to create appropriate labels
+   - Configure update types (patch/minor/major) eligible for auto-merge
 
-## Testing Instructions
+## References
 
-1. Push this code to your GitHub repository
-2. In the GitHub repository settings, navigate to "Code security and analysis"
-3. Enable Dependabot security updates and version updates
-4. Navigate to "Settings" > "Code and automation" > "Rulesets"
-5. Create two new rulesets using the JSON files in `.github/rulesets/`:
-   - Create a ruleset for Dependabot PRs using `dependabot-auto-merge.json` (set to active)
-   - Create a ruleset for developer PRs using `developer-checks.json` (can be enabled as needed)
-6. Configure the rulesets to apply to their respective PR types
-7. Wait for Dependabot to create PRs or trigger them manually
-8. Observe that:
-   - Dependabot PRs only need to pass their ecosystem-specific checks
-   - Developer PRs will run all checks defined in the workflow
-   - Dependabot PRs that pass their checks will be automatically merged
-
-https://github.com/orgs/community/discussions/12395
-https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enabling-automerge-on-a-pull-request
+- [GitHub Community Discussion on Auto-merge](https://github.com/orgs/community/discussions/12395#discussioncomment-12970019)
+- [GitHub Dependabot Auto-merge Documentation](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/automating-dependabot-with-github-actions#enabling-automerge-on-a-pull-request)
